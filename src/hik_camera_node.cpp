@@ -44,8 +44,14 @@ public:
 
     bool use_sensor_data_qos = this->declare_parameter("use_sensor_data_qos", true);
     auto qos = use_sensor_data_qos ? rmw_qos_profile_sensor_data : rmw_qos_profile_default;
-    camera_pub_ = image_transport::create_camera_publisher(this, "image_raw", qos);
+    camera_pub_ = image_transport::create_camera_publisher(this, "/raw_image", qos);
+    
+    // Load set 3
 
+    MV_CC_SetEnumValue(camera_handle_, "UserSetSelector", 3);
+    MV_CC_SetCommandValue(camera_handle_, "UserSetLoad");
+
+    // Load params
     declareParameters();
 
     MV_CC_StartGrabbing(camera_handle_);
@@ -73,9 +79,16 @@ public:
 
       image_msg_.header.frame_id = "camera_optical_frame";
       image_msg_.encoding = "rgb8";
-
+      auto firstTime = this->now();
       while (rclcpp::ok()) {
         nRet = MV_CC_GetImageBuffer(camera_handle_, &out_frame, 1000);
+
+        // MVCC_FLOATVALUE stFloatValue;
+        // MV_CC_GetFloatValue(camera_handle_, "ResultingFrameRate", &stFloatValue);
+        // std::cout<<"countPublish->"<<countPublish<<"\tnFrameNum->"<<out_frame.stFrameInfo.nFrameNum<<"\tacquisition rate->"<<out_frame.stFrameInfo.nFrameNum/(this->now()-firstTime).seconds()
+        // <<"\tpublish rate->"<<countPublish/(this->now()-firstTime).seconds()<<std::endl;
+        // ++countPublish;
+
         if (MV_OK == nRet) {
           convert_param_.pDstBuffer = image_msg_.data.data();
           convert_param_.nDstBufferSize = image_msg_.data.size();
@@ -105,7 +118,7 @@ public:
 
         if (fail_conut_ > 5) {
           RCLCPP_FATAL(this->get_logger(), "Camera failed!");
-          rclcpp::shutdown();
+          // rclcpp::shutdown();
         }
       }
     }};
